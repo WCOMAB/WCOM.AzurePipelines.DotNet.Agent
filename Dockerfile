@@ -10,7 +10,7 @@ ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
 
 RUN apk update \
     && apk upgrade \
-    && apk add bash curl git icu-libs jq gcc musl-dev python3-dev libffi-dev openssl-dev cargo make py3-pip nodejs npm
+    && apk add bash curl git icu-libs jq gcc musl-dev python3-dev libffi-dev openssl-dev cargo make py3-pip nodejs npm zip
 
 
 # Install Azure CLI
