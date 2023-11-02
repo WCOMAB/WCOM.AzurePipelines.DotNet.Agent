@@ -13,11 +13,12 @@ jobs:
     isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
   steps:
   - script: |
-      docker build --build-arg BUILD_AZP_TOKEN --build-arg BUILD_AZP_URL -t $(imageName):latest -t $(imageName):$(Build.BuildNumber) .
+      docker build --build-arg BUILD_AZP_TOKEN --build-arg BUILD_AZP_URL --build-arg BUILD_AZP_VERSION -t $(imageName):latest -t $(imageName):$(Build.BuildNumber) .
     displayName: Docker Build
     env:
       BUILD_AZP_TOKEN: $(System.AccessToken)
       BUILD_AZP_URL: $(System.CollectionUri)
+      BUILD_AZP_VERSION: $(Build.BuildNumber) 
       
   - task: AzureCLI@2
     displayName: Docker Push

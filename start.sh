@@ -59,7 +59,7 @@ print_header "3. Configuring Azure Pipelines agent..."
   --replace \
   --acceptTeeEula & wait $!
 
-print_header "4. Running Azure Pipelines agent..."
+print_header "4. Running Azure Pipelines agent (${BUILD_AZP_VERSION})..."
 
 chmod +x ./run.sh
 

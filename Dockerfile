@@ -1,21 +1,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
-ENV TARGETARCH="linux-musl-x64"
-ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
+ARG BUILD_AZP_VERSION=1.0.0.0
+
+ENV TARGETARCH="linux-musl-x64"
+ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
+ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
+
+
 RUN apk update \
     && apk upgrade \
     && apk add bash curl git icu-libs jq gcc musl-dev python3-dev libffi-dev openssl-dev cargo make py3-pip nodejs npm
 
-WORKDIR /azp/
-
-COPY ./install.sh /azp/
-COPY ./start.sh /azp/
-
-RUN chmod +x ./install.sh \
-    && chmod +x ./start.sh \
-    && adduser -D agent \
-    && chown agent ./ 
 
 # Install Azure CLI
 RUN pip install --upgrade pip \
@@ -30,11 +26,31 @@ RUN curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
     && ./dotnet-install.sh --channel 7.0 --install-dir /usr/share/dotnet \
     && ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet
 
+WORKDIR /azp/
+
+COPY ./install.sh /azp/
+COPY ./start.sh /azp/
+COPY ./primedotnet.ps1 /azp/
+
+RUN chmod +x ./install.sh \
+    && chmod +x ./start.sh \
+    && chmod +x ./primedotnet.ps1 \
+    && adduser -D agent \
+    && chown agent ./ 
 
 USER agent
 
 # Install DevOps Agent
-RUN (export AZP_TOKEN=${BUILD_AZP_TOKEN};export AZP_URL=${BUILD_AZP_URL}; ./install.sh) 
+RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
+    && export AZP_URL=${BUILD_AZP_URL} \
+    && ./install.sh
+
+# Install GLobal tools
+ENV PATH="${PATH}:/home/agent/.dotnet/tools"
+RUN dotnet tool install --global dpi \
+    && dpi --version \
+    && dotnet tool install --global Cake.Tool \
+    && dotnet cake --info
 
 # Prime .NET
 ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES"
@@ -42,29 +58,6 @@ ENV NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH"
 RUN mkdir /azp/nuget \
     && mkdir /azp/nuget/NUGET_PACKAGES \
     && mkdir /azp/nuget/NUGET_HTTP_CACHE_PATH \
-    && mkdir prime \
-    && cd prime \
-    && dotnet new globaljson --force --sdk-version 8.0.0 --roll-forward latestFeature \
-    && dotnet --version \
-    && dotnet --info \
-    && dotnet new console -n testconsole --framework net8.0 \
-    && dotnet build testconsole \
-    && rm -rf testconsole \
-    && rm global.json \
-    && dotnet new globaljson --sdk-version 7.0.0 --roll-forward latestFeature \
-    && dotnet --version \
-    && dotnet --info \
-    && dotnet new console -n testconsole --framework net7.0 \
-    && dotnet build testconsole \
-    && rm -rf testconsole \
-    && rm global.json \
-    && dotnet new globaljson --sdk-version 6.0.0 --roll-forward latestFeature \
-    && dotnet --version \
-    && dotnet --info \
-    && dotnet new console -n testconsole --framework net6.0 \
-    && dotnet build testconsole \
-    && rm -rf testconsole \
-    && cd .. \
-    && rm -rf prime 
+    && ./primedotnet.ps1
 
 ENTRYPOINT ./start.sh
