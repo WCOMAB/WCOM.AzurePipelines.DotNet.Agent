@@ -19,13 +19,6 @@ RUN pip install --upgrade pip \
     && az bicep upgrade \
     && az version -o table
 
-# Install .NET
-RUN curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
-    && chmod +x "dotnet-install.sh" \
-    && ./dotnet-install.sh --channel 6.0 --install-dir /usr/share/dotnet \
-    && ./dotnet-install.sh --channel 7.0 --install-dir /usr/share/dotnet \
-    && ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet
-
 WORKDIR /azp/
 
 COPY ./install.sh /azp/
@@ -39,6 +32,18 @@ RUN chmod +x ./install.sh \
     && chown -R agent ./
 
 USER agent
+
+ENV AGENT_TOOLSDIRECTORY="/azp/tools"
+RUN mkdir /azp/tools
+
+# Install .NET
+ENV PATH="/azp/tools/dotnet:${PATH}"
+RUN mkdir /azp/tools/dotnet \
+    && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
+    && chmod +x "dotnet-install.sh" \
+    && ./dotnet-install.sh --channel 6.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 7.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet
 
 # Install DevOps Agent
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
