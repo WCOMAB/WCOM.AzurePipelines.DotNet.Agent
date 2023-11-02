@@ -40,6 +40,8 @@ print_header() {
   echo -e "\n${lightcyan}$1${nocolor}\n"
 }
 
+print_header "3. Starting Azurite..."
+azurite &
 
 source ./env.sh
 
@@ -47,7 +49,7 @@ trap "cleanup; exit 0" EXIT
 trap "cleanup; exit 130" INT
 trap "cleanup; exit 143" TERM
 
-print_header "3. Configuring Azure Pipelines agent..."
+print_header "4. Configuring Azure Pipelines agent..."
 
 ./config.sh --unattended \
   --agent "${AZP_AGENT_NAME:-$(hostname)}" \
@@ -59,7 +61,7 @@ print_header "3. Configuring Azure Pipelines agent..."
   --replace \
   --acceptTeeEula & wait $!
 
-print_header "4. Running Azure Pipelines agent (${BUILD_AZP_VERSION})..."
+print_header "5. Running Azure Pipelines agent (${BUILD_AZP_VERSION})..."
 
 chmod +x ./run.sh
 

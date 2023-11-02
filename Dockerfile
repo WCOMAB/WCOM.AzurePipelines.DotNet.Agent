@@ -36,7 +36,7 @@ RUN chmod +x ./install.sh \
     && chmod +x ./start.sh \
     && chmod +x ./primedotnet.ps1 \
     && adduser -D agent \
-    && chown agent ./ 
+    && chown -R agent ./
 
 USER agent
 
@@ -44,6 +44,12 @@ USER agent
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && export AZP_URL=${BUILD_AZP_URL} \
     && ./install.sh
+
+# Configure Node & Install Azurite
+ENV PATH="${PATH}:/home/agent/.npm-global/bin"
+RUN mkdir /home/agent/.npm-global \
+    && npm config set prefix '/home/agent/.npm-global' \
+    && npm install -g azurite
 
 # Install GLobal tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
