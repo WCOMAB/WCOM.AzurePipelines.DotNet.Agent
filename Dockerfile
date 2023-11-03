@@ -10,7 +10,7 @@ ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
 
 RUN apk update \
     && apk upgrade \
-    && apk add bash curl git icu-libs jq gcc musl-dev python3-dev libffi-dev openssl-dev cargo make py3-pip nodejs npm zip
+    && apk add bash curl git icu-libs jq gcc musl-dev python3-dev libffi-dev openssl-dev cargo make py3-pip nodejs npm zip gnupg
 
 
 # Install Azure CLI
@@ -24,12 +24,19 @@ WORKDIR /azp/
 COPY ./install.sh /azp/
 COPY ./start.sh /azp/
 COPY ./primedotnet.ps1 /azp/
+COPY ./installsqltools.sh /azp/
 
 RUN chmod +x ./install.sh \
     && chmod +x ./start.sh \
     && chmod +x ./primedotnet.ps1 \
+    && chmod +x installsqltools.sh \
     && adduser -D agent \
     && chown -R agent ./
+
+# Install MS SQL Tools / Drivers
+ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
+RUN ./installsqltools.sh \
+    && sqlcmd "-?"
 
 USER agent
 
@@ -37,8 +44,15 @@ ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
 
 # Install .NET
+ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES"
+ENV NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH"
 ENV PATH="/azp/tools/dotnet:${PATH}"
-RUN mkdir /azp/tools/dotnet \
+ENV DOTNET_ROOT="/azp/tools/dotnet"
+ENV DOTNET_HOST_PATH="/azp/tools/dotnet/dotnet"
+RUN mkdir /azp/nuget \
+    && mkdir /azp/nuget/NUGET_PACKAGES \
+    && mkdir /azp/nuget/NUGET_HTTP_CACHE_PATH \
+    && mkdir /azp/tools/dotnet \
     && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
     && chmod +x "dotnet-install.sh" \
     && ./dotnet-install.sh --channel 6.0 --install-dir /azp/tools/dotnet \
@@ -56,19 +70,17 @@ RUN mkdir /home/agent/.npm-global \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite
 
-# Install GLobal tools
+# Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
 RUN dotnet tool install --global dpi \
     && dpi --version \
     && dotnet tool install --global Cake.Tool \
-    && dotnet cake --info
+    && dotnet cake --info \
+    && dotnet tool install --global microsoft.sqlpackage \
+    && sqlpackage /version
+
 
 # Prime .NET
-ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES"
-ENV NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH"
-RUN mkdir /azp/nuget \
-    && mkdir /azp/nuget/NUGET_PACKAGES \
-    && mkdir /azp/nuget/NUGET_HTTP_CACHE_PATH \
-    && ./primedotnet.ps1
+RUN ./primedotnet.ps1
 
 ENTRYPOINT ./start.sh
