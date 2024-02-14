@@ -1,5 +1,5 @@
 #!/usr/share/powershell/pwsh
-$ErrorActionPreference = "Stop" 
+$ErrorActionPreference = "Stop"
 Set-StrictMode -Version 7.3
 
 [string[]] $netversions = @(
