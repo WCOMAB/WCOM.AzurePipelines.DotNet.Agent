@@ -16,4 +16,5 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 
 * `AZP_TOKEN` - Azure DevOps PAT used to register agent
 * `AZP_URL` - Azure DevOps org base url
-* `AZP_POOL` - Azure Pipelines Agent pool to register with
+* `AZP_POOL` - Azure Pipelines Agent pool to register with.
+* `AZP_ARGS`- Optional variable for arguments to the build agent i.e. `--once`.
