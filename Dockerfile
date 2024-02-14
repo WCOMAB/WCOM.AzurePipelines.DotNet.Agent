@@ -1,4 +1,5 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+# Azure CLI not compatible with alpine3.19
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine3.18 AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
