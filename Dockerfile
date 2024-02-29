@@ -66,11 +66,12 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && export AZP_URL=${BUILD_AZP_URL} \
     && ./install.sh
 
-# Configure Node & Install Azurite
+# Configure Node, Install Azurite & Renovate
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
 RUN mkdir /home/agent/.npm-global \
     && npm config set prefix '/home/agent/.npm-global' \
-    && npm install -g azurite
+    && npm install -g azurite \
+    && npm install -g renovate
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
@@ -79,7 +80,10 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global Cake.Tool \
     && dotnet cake --info \
     && dotnet tool install --global microsoft.sqlpackage \
-    && sqlpackage /version
+    && sqlpackage /version \
+    && dotnet tool install --global dotnet-outdated-tool \
+    && dotnet-outdated --version \
+    && dotnet tool install --global azdomerger
 
 
 # Prime .NET
