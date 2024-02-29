@@ -23,10 +23,10 @@ Set-StrictMode -Version 7.3
 $netversions `
  | ForEach-Object {
     [string] $netversion    =$_
-    [string] $framwork      ="net$netversion"
+    [string] $framework     ="net$netversion"
     [string] $sdkVersion    ="$netversion.0"
     Push-Location
-    New-Item -Path $framwork -ItemType Directory `
+    New-Item -Path $framework -ItemType Directory `
         | Set-Location
 
     dotnet new globaljson --force --sdk-version $sdkVersion --roll-forward latestFeature
@@ -41,15 +41,34 @@ $netversions `
             New-Item -Path $template -ItemType Directory `
              | Set-Location
 
-            dotnet new $template -n $project --framework $framwork
-            dotnet build $project --verbosity Minimal
-
+            dotnet new $template -n $project --framework $framework
             $ResultCode+=$LASTEXITCODE
+
+            dotnet outdated -u $project
+            $ResultCode+=$LASTEXITCODE
+
+            switch($template)
+            {
+                'console' {
+                }
+                'web' {
+                }
+                'classlib' {
+                }
+                Default {
+                    dotnet add $project package "Verify.$template"
+                    $ResultCode+=$LASTEXITCODE
+                }
+            }
+
+            dotnet build $project
+            $ResultCode+=$LASTEXITCODE
+
             Pop-Location
             Remove-Item -Recurse -Force $template
         }
     Pop-Location
-    Remove-Item -Recurse -Force $framwork
+    Remove-Item -Recurse -Force $framework
  }
 
  exit $ResultCode
