@@ -13,7 +13,12 @@ USER root
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
-RUN apt-get install -y npm zip nodejs python3 python3-pip
+RUN apt-get install -y zip python3 python3-pip
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash 
+RUN apt-get install -y nodejs && \
+    node -v && \
+    npm --version 
 
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
