@@ -1,32 +1,25 @@
 #!/bin/bash
-case $(uname -m) in
-    x86_64)   architecture="amd64" ;;
-    arm64)   architecture="arm64" ;;
-    *) architecture="unsupported" ;;
-esac
-if [[ "unsupported" == "$architecture" ]];
+if ! [[ "18.04 20.04 22.04 23.04 24.04" == *"$(lsb_release -rs)"* ]];
 then
-    echo "Alpine architecture $(uname -m) is not currently supported.";
+    echo "Ubuntu $(lsb_release -rs) is not currently supported.";
     exit;
 fi
 
+# Add the signature to trust the Microsoft repo
+# For Ubuntu versions < 24.04 
+curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc
+# For Ubuntu versions >= 24.04
+curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 
-#Download the desired package(s)
-curl -O https://download.microsoft.com/download/3/5/5/355d7943-a338-41a7-858d-53b259ea33f5/msodbcsql18_18.3.2.1-1_$architecture.apk
-curl -O https://download.microsoft.com/download/3/5/5/355d7943-a338-41a7-858d-53b259ea33f5/mssql-tools18_18.3.1.1-1_$architecture.apk
+# Add repo to apt sources
+curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | tee /etc/apt/sources.list.d/mssql-release.list
 
-
-#(Optional) Verify signature, if 'gpg' is missing install it using 'apk add gnupg':
-curl -O https://download.microsoft.com/download/3/5/5/355d7943-a338-41a7-858d-53b259ea33f5/msodbcsql18_18.3.2.1-1_$architecture.sig
-curl -O https://download.microsoft.com/download/3/5/5/355d7943-a338-41a7-858d-53b259ea33f5/mssql-tools18_18.3.1.1-1_$architecture.sig
-
-curl https://packages.microsoft.com/keys/microsoft.asc  | gpg --import -
-gpg --verify msodbcsql18_18.3.2.1-1_$architecture.sig msodbcsql18_18.3.2.1-1_$architecture.apk
-gpg --verify mssql-tools18_18.3.1.1-1_$architecture.sig mssql-tools18_18.3.1.1-1_$architecture.apk
-
-
-#Install the package(s)
-apk add --allow-untrusted msodbcsql18_18.3.2.1-1_$architecture.apk \
-    && apk add --allow-untrusted mssql-tools18_18.3.1.1-1_$architecture.apk \
-    && rm -f mssql-tools18_18.3.1.1-1_$architecture.apk \
-    && rm -f msodbcsql18_18.3.2.1-1_$architecture.apk
+# Install the driver
+apt-get update
+ACCEPT_EULA=Y apt-get install -y msodbcsql18
+# optional: for bcp and sqlcmd
+ACCEPT_EULA=Y apt-get install -y mssql-tools18
+echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
+source ~/.bashrc
+# optional: for unixODBC development headers
+apt-get install -y unixodbc-dev
