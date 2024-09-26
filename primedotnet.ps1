@@ -45,20 +45,23 @@ $netversions `
             dotnet new $template -n $project --framework $framework
             $ResultCode+=$LASTEXITCODE
 
-            dotnet outdated -u $project
-            $ResultCode+=$LASTEXITCODE
-
-            switch($template)
+            if ($template -ne 'mstest' -or $netversion -ne '9.0')
             {
-                'console' {
-                }
-                'web' {
-                }
-                'classlib' {
-                }
-                Default {
-                    dotnet add $project package "Verify.$template"
-                    $ResultCode+=$LASTEXITCODE
+                dotnet outdated -u $project
+                $ResultCode+=$LASTEXITCODE
+
+                switch($template)
+                {
+                    'console' {
+                    }
+                    'web' {
+                    }
+                    'classlib' {
+                    }
+                    Default {
+                        dotnet add $project package "Verify.$template"
+                        $ResultCode+=$LASTEXITCODE
+                    }
                 }
             }
 
