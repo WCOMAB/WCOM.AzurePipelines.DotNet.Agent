@@ -13,12 +13,8 @@ USER root
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
-RUN apt-get install -y zip python3 python3-pip
+RUN apt-get install -y zip python3 python3-pip unzip
 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash 
-RUN apt-get install -y nodejs && \
-    node -v && \
-    npm --version 
 
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
@@ -45,6 +41,20 @@ RUN ./installsqltools.sh \
     && sqlcmd "-?"
 
 USER agent
+
+# Install Node
+ENV FNM_PATH="/home/agent/.local/share/fnm"
+ENV PATH="${PATH}:${FNM_PATH}"
+RUN curl -fsSL https://fnm.vercel.app/install | bash 
+RUN eval "`fnm env`" \
+    && fnm install 18 \
+    && fnm install 20 \
+    && fnm install 22 \
+    && fnm install --lts \
+    && fnm default 22 \
+    && node -v \
+    && npm --version
+
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
@@ -74,7 +84,8 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
 
 # Configure Node, Install Azurite & Renovate
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
-RUN mkdir /home/agent/.npm-global \
+RUN eval "`fnm env`" \
+    && mkdir /home/agent/.npm-global \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
