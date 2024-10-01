@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-eval "`fnm env`"
+eval "$(fnm env --shell bash)"
     
 
 if [ -z "${AZP_URL}" ]; then
@@ -68,7 +68,7 @@ print_header "5. Running Azure Pipelines agent (${BUILD_AZP_VERSION})..."
 
 chmod +x ./run.sh
 
-eval "`fnm env`"
+eval "$(fnm env --shell bash)"
 
 # To be aware of TERM and INT signals call ./run.sh
 # Running it with the --once flag at the end will shut down the agent after the build is executed

@@ -46,7 +46,7 @@ USER agent
 ENV FNM_PATH="/home/agent/.local/share/fnm"
 ENV PATH="${PATH}:${FNM_PATH}"
 RUN curl -fsSL https://fnm.vercel.app/install | bash 
-RUN eval "`fnm env`" \
+RUN eval "$(fnm env --shell bash)"\
     && fnm install 18 \
     && fnm install 20 \
     && fnm install 22 \
@@ -84,7 +84,7 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
 
 # Configure Node, Install Azurite & Renovate
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
-RUN eval "`fnm env`" \
+RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
