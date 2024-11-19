@@ -7,7 +7,6 @@ ENV TARGETARCH="linux-x64"
 ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
 
-
 USER root
 
 RUN apt-get update
@@ -40,7 +39,7 @@ RUN chmod +x ./install.sh \
     && adduser --disabled-password agent \
     && chown -R agent ./
 
-# Configure setup for Podman/Buildah
+# Configure setup for Buildah
 RUN mkdir -p /home/agent/.local/share/containers \
     && mkdir -p /var/lib/containers \
     && mkdir -p /home/agent/.config/containers \
@@ -70,7 +69,6 @@ RUN eval "$(fnm env --shell bash)"\
     && fnm default 22 \
     && node -v \
     && npm --version
-
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
@@ -118,7 +116,6 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global dotnet-outdated-tool \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger
-
 
 # Prime .NET
 RUN ./primedotnet.ps1
