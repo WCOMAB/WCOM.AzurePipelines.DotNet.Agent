@@ -15,12 +15,11 @@ RUN apt-get upgrade -y
 RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
 RUN apt-get install -y zip python3 python3-pip unzip
 
-# Install Podman and Buildah
+# Install Buildah
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && DEBIAN_FRONTEND=noninteractive \
     && dpkg --configure -a \
     && apt-get install -y tzdata \
-    && apt-get install -y podman \
     && apt-get install -y buildah
 
 # Install Azure CLI
@@ -51,15 +50,6 @@ RUN mkdir -p /home/agent/.local/share/containers \
     && chown agent:agent -R /var/lib/containers \
     && chown agent:agent -R /home/agent/.config/containers \
     && usermod --add-subuids 100000-200000 --add-subgids 100000-200000 agent
-
-VOLUME /var/lib/containers
-VOLUME /home/agent/.local/share/containers
-
-ENV _BUILDAH_STARTED_IN_USERNS="" BUILDAH_ISOLATION=chroot
-
-RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/lib/shared/vfs-images /var/lib/shared/vfs-layers; touch /var/lib/shared/overlay-images/images.lock; touch /var/lib/shared/overlay-layers/layers.lock; touch /var/lib/shared/vfs-images/images.lock; touch /var/lib/shared/vfs-layers/layers.lock
-
-ENV _CONTAINERS_USERNS_CONFIGURED=""
 
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
