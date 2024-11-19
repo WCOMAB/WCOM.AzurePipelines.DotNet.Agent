@@ -39,7 +39,7 @@ RUN chmod +x ./install.sh \
     && adduser --disabled-password agent \
     && chown -R agent ./
 
-# Configure setup for Buildah
+# Add necessary configuration for Buildah
 RUN mkdir -p /home/agent/.local/share/containers \
     && mkdir -p /var/lib/containers \
     && mkdir -p /home/agent/.config/containers \
