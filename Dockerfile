@@ -137,10 +137,10 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
 RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
-    && npm --version 
-    # && npm config set prefix '/home/agent/.npm-global' \
-    # && npm install -g azurite \
-    # && npm install -g renovate
+    && npm --version \
+    && npm config set prefix '/home/agent/.npm-global' \
+    && npm install -g azurite \
+    && npm install -g renovate
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
@@ -155,6 +155,6 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global azdomerger
 
 # Prime .NET
-# RUN ./primedotnet.ps1
+RUN ./primedotnet.ps1
 
 ENTRYPOINT ./start.sh
