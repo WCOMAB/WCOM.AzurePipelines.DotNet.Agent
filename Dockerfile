@@ -15,6 +15,8 @@ RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-pr
 RUN apt-get install -y zip python3 python3-pip unzip
 
 # Install Buildah
+RUN echo 'kernel.unprivileged_userns_clone=1' > /etc/sysctl.d/00-local-userns.conf
+RUN sysctl --system
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && DEBIAN_FRONTEND=noninteractive \
     && dpkg --configure -a \
