@@ -7,6 +7,8 @@ ENV TARGETARCH="linux-x64"
 ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
 
+LABEL "io.containers.capabilities"="CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,SYS_CHROOT"
+
 USER root
 
 RUN apt-get update
@@ -15,13 +17,12 @@ RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-pr
 RUN apt-get install -y zip python3 python3-pip unzip
 
 # Install Buildah
-RUN echo 'kernel.unprivileged_userns_clone=1' > /etc/sysctl.d/00-local-userns.conf
-RUN sysctl --system
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && DEBIAN_FRONTEND=noninteractive \
     && dpkg --configure -a \
     && apt-get install -y tzdata \
-    && apt-get install -y buildah
+    && apt-get install -y buildah \
+    && apt-get install fuse-overlayfs
 
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
@@ -44,13 +45,47 @@ RUN chmod +x ./install.sh \
 # Add necessary configuration for Buildah
 RUN mkdir -p /home/agent/.local/share/containers \
     && mkdir -p /var/lib/containers \
+    && mkdir -p /etc/containers/ \
     && mkdir -p /home/agent/.config/containers \
-    && echo "[storage]\ndriver = \"overlay\"\n[storage.options]\nignore_chown_errors = \"true\"" > /home/agent/.config/containers/storage.conf \
     && chown agent:agent -R /home/agent \
     && chown agent:agent -R /home/agent/.local \
     && chown agent:agent -R /var/lib/containers \
     && chown agent:agent -R /home/agent/.config/containers \
     && usermod --add-subuids 100000-200000 --add-subgids 100000-200000 agent
+
+RUN printf '/run/secrets/etc-pki-entitlement:/run/secrets/etc-pki-entitlement\n/run/secrets/rhsm:/run/secrets/rhsm\n' > /etc/containers/mounts.conf
+
+RUN mkdir -p /var/lib/shared/overlay-images \
+             /var/lib/shared/overlay-layers \
+             /var/lib/shared/vfs-images \
+             /var/lib/shared/vfs-layers && \
+    touch /var/lib/shared/overlay-images/images.lock && \
+    touch /var/lib/shared/overlay-layers/layers.lock && \
+    touch /var/lib/shared/vfs-images/images.lock && \
+    touch /var/lib/shared/vfs-layers/layers.lock
+
+VOLUME /var/lib/containers
+VOLUME /home/agent/.local/share/containers
+
+ENV _BUILDAH_STARTED_IN_USERNS="" BUILDAH_ISOLATION=chroot
+
+ADD ./Buildah/storage.conf /usr/share/containers/
+ADD ./Buildah/containers.conf /etc/containers/
+
+RUN sed -e 's|^#mount_program|mount_program|g' \
+        -e '/additionalimage.*/a "/var/lib/shared",' \
+        -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' \
+        /usr/share/containers/storage.conf \
+        > /etc/containers/storage.conf && \
+    chmod 644 /etc/containers/storage.conf && \
+    chmod 644 /etc/containers/containers.conf
+
+RUN sed -e 's|^#mount_program|mount_program|g' \
+        -e 's|^graphroot|#graphroot|g' \
+        -e 's|^runroot|#runroot|g' \
+        /etc/containers/storage.conf \
+        > /home/agent/.config/containers/storage.conf && \
+        chown agent:agent /home/agent/.config/containers/storage.conf
 
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
