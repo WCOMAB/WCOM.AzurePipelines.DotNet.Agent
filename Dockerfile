@@ -7,7 +7,6 @@ ENV TARGETARCH="linux-x64"
 ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
 
-
 USER root
 
 RUN apt-get update
@@ -15,11 +14,16 @@ RUN apt-get upgrade -y
 RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
 RUN apt-get install -y zip python3 python3-pip unzip
 
+# Install Buildah
+RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
+    && DEBIAN_FRONTEND=noninteractive \
+    && dpkg --configure -a \
+    && apt-get install -y tzdata \
+    && apt-get install -y buildah
 
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && az upgrade --all --yes
-
 
 WORKDIR /azp/
 
@@ -34,6 +38,17 @@ RUN chmod +x ./install.sh \
     && chmod +x installsqltools.sh \
     && adduser --disabled-password agent \
     && chown -R agent ./
+
+# Add necessary configuration for Buildah
+RUN mkdir -p /home/agent/.local/share/containers \
+    && mkdir -p /var/lib/containers \
+    && mkdir -p /home/agent/.config/containers \
+    && echo "[storage]\ndriver = \"overlay\"\n[storage.options]\nignore_chown_errors = \"true\"" > /home/agent/.config/containers/storage.conf \
+    && chown agent:agent -R /home/agent \
+    && chown agent:agent -R /home/agent/.local \
+    && chown agent:agent -R /var/lib/containers \
+    && chown agent:agent -R /home/agent/.config/containers \
+    && usermod --add-subuids 100000-200000 --add-subgids 100000-200000 agent
 
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
@@ -54,7 +69,6 @@ RUN eval "$(fnm env --shell bash)"\
     && fnm default 22 \
     && node -v \
     && npm --version
-
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
@@ -102,7 +116,6 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global dotnet-outdated-tool \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger
-
 
 # Prime .NET
 RUN ./primedotnet.ps1
