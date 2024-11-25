@@ -24,6 +24,9 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && apt-get install -y buildah \
     && apt-get install fuse-overlayfs
 
+# Install Skopeo
+RUN apt-get -y install skopeo
+
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && az upgrade --all --yes
@@ -42,6 +45,11 @@ RUN chmod +x ./install.sh \
     && adduser --disabled-password agent \
     && chown -R agent ./
 
+# Configuration for Skopeo
+RUN mkdir -p /run/containers \
+    && chown agent:agent -R /run/containers \
+    && chmod 644 /run/containers
+
 # Add necessary configuration for Buildah
 RUN mkdir -p /home/agent/.local/share/containers \
     && mkdir -p /var/lib/containers \
@@ -51,7 +59,7 @@ RUN mkdir -p /home/agent/.local/share/containers \
     && chown agent:agent -R /home/agent/.local \
     && chown agent:agent -R /var/lib/containers \
     && chown agent:agent -R /home/agent/.config/containers \
-    && usermod --add-subuids 100000-200000 --add-subgids 100000-200000 agent
+    && usermod --add-subuids 100000-165535 --add-subgids 100000-165535 agent
 
 RUN printf '/run/secrets/etc-pki-entitlement:/run/secrets/etc-pki-entitlement\n/run/secrets/rhsm:/run/secrets/rhsm\n' > /etc/containers/mounts.conf
 
@@ -67,7 +75,7 @@ RUN mkdir -p /var/lib/shared/overlay-images \
 VOLUME /var/lib/containers
 VOLUME /home/agent/.local/share/containers
 
-ENV _BUILDAH_STARTED_IN_USERNS="" BUILDAH_ISOLATION=chroot
+ENV _BUILDAH_STARTED_IN_USERNS="" BUILDAH_ISOLATION=chroot REGISTRY_AUTH_FILE=/home/agent/auth.json
 
 ADD ./Buildah/storage.conf /usr/share/containers/
 ADD ./Buildah/containers.conf /etc/containers/
@@ -85,7 +93,8 @@ RUN sed -e 's|^#mount_program|mount_program|g' \
         -e 's|^runroot|#runroot|g' \
         /etc/containers/storage.conf \
         > /home/agent/.config/containers/storage.conf && \
-        chown agent:agent /home/agent/.config/containers/storage.conf
+        chown agent:agent /home/agent/.config/containers/storage.conf && \
+        chmod 4755 /usr/bin/newuidmap /usr/bin/newgidmap
 
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
