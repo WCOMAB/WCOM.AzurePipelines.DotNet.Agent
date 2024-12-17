@@ -14,7 +14,7 @@ USER root
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
-RUN apt-get install -y zip python3 python3-pip unzip
+RUN apt-get install -y zip python3 python3-pip unzip ca-certificates gnupg
 
 # Install Buildah
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
@@ -30,6 +30,15 @@ RUN apt-get -y install skopeo
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && az upgrade --all --yes
+
+# Install Kubectl
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list \
+    && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
+    && apt-get update \
+    && apt-get install -y kubectl
 
 WORKDIR /azp/
 
