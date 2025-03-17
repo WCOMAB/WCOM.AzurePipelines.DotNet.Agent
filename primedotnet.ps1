@@ -3,8 +3,6 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 7.3
 
 [string[]] $netversions = @(
-    '6.0',
-    '7.0',
     '8.0',
     '9.0'
     )
