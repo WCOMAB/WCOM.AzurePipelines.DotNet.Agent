@@ -31,6 +31,11 @@ RUN apt-get -y install skopeo
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && az upgrade --all --yes
 
+# Install Azure Developer CLI
+RUN curl -fsSL https://aka.ms/install-azd.sh | bash \
+    && azd version
+
+
 # Install Kubectl
 RUN mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
