@@ -51,11 +51,13 @@ COPY ./install.sh /azp/
 COPY ./start.sh /azp/
 COPY ./primedotnet.ps1 /azp/
 COPY ./installsqltools.sh /azp/
+COPY ./crane.sh /azp/
 
 RUN chmod +x ./install.sh \
     && chmod +x ./start.sh \
     && chmod +x ./primedotnet.ps1 \
     && chmod +x installsqltools.sh \
+    && chmod +x ./crane.sh \
     && adduser --disabled-password agent \
     && chown -R agent ./
 
@@ -114,6 +116,9 @@ RUN sed -e 's|^#mount_program|mount_program|g' \
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
 RUN ./installsqltools.sh \
     && sqlcmd "-?"
+
+# Install crane
+RUN ./crane.sh
 
 USER agent
 
