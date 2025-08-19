@@ -179,6 +179,11 @@ RUN dotnet tool install --global dpi \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger
 
+# Install Cursor CLI
+ENV PATH="${PATH}:/home/agent/.local/bin"
+RUN curl -fsSL https://cursor.com/install | bash \
+    && cursor-agent --version
+
 # Prime .NET
 RUN ./primedotnet.ps1
 
