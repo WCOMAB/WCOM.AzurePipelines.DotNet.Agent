@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
