@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-aot AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
@@ -130,6 +130,7 @@ RUN eval "$(fnm env --shell bash)"\
     && fnm install 18 \
     && fnm install 20 \
     && fnm install 22 \
+    && fnm install 24 \
     && fnm install --lts \
     && fnm default 22 \
     && node -v \
@@ -151,7 +152,8 @@ RUN mkdir /azp/nuget \
     && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
     && chmod +x "dotnet-install.sh" \
     && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet
+    && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet
 
 # Install DevOps Agent
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
@@ -162,10 +164,13 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
 RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
+    && fnm use 22 --install-if-missing \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
-    && npm install -g renovate
+    && npm install -g renovate \
+    && npm rebuild --global renovate \
+    && npm rebuild --global re2
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
