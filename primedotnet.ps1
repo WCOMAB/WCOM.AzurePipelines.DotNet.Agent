@@ -4,7 +4,8 @@ Set-StrictMode -Version 7.3
 
 [string[]] $netversions = @(
     '8.0',
-    '9.0'
+    '9.0',
+    '10.0'
     )
 
 [string[]] $templates = @(
@@ -43,22 +44,25 @@ $netversions `
             dotnet new $template -n $project --framework $framework
             $ResultCode+=$LASTEXITCODE
 
-            if ($template -ne 'mstest' -or $netversion -ne '9.0')
+            if ($template -ne 'mstest' -or ($netversion -ne '9.0' -and $netversion -ne '10.0'))
             {
-                dotnet outdated -u $project
-                $ResultCode+=$LASTEXITCODE
-
-                switch($template)
+                if ($netversion -ne '10.0')
                 {
-                    'console' {
-                    }
-                    'web' {
-                    }
-                    'classlib' {
-                    }
-                    Default {
-                        dotnet add $project package "Verify.$template"
-                        $ResultCode+=$LASTEXITCODE
+                    dotnet outdated -u $project
+                    $ResultCode+=$LASTEXITCODE
+
+                    switch($template)
+                    {
+                        'console' {
+                        }
+                        'web' {
+                        }
+                        'classlib' {
+                        }
+                        Default {
+                            dotnet add $project package "Verify.$template"
+                            $ResultCode+=$LASTEXITCODE
+                        }
                     }
                 }
             }
