@@ -8,9 +8,11 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 
 * .NET 8
 * .NET 9
+* .NET 10
 * Azure CLI
 * Node LTS
 * Buildah (Container tagging and publishing)
+* Crane (Container archive publishing)
 
 ## Environment variables
 
