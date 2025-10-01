@@ -35,6 +35,14 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
 RUN curl -fsSL https://aka.ms/install-azd.sh | bash \
     && azd version
 
+# Install Bicep
+RUN curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64 \
+    && chmod +x bicep \
+    && mv bicep /usr/local/bin/ \
+    && az config set bicep.check_version=False \
+    && az config set bicep.use_binary_from_path=True \
+    && bicep --version \
+    && az bicep version
 
 # Install Kubectl
 RUN mkdir -p /etc/apt/keyrings \
