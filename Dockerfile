@@ -53,6 +53,12 @@ RUN mkdir -p /etc/apt/keyrings \
     && apt-get update \
     && apt-get install -y kubectl
 
+# Install regctl
+RUN curl -Lo regctl https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 \
+    && chmod +x regctl \
+    && mv regctl /usr/local/bin/ \
+    && regctl version
+
 WORKDIR /azp/
 
 COPY ./install.sh /azp/
