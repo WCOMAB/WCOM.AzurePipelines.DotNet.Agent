@@ -146,9 +146,11 @@ RUN eval "$(fnm env --shell bash)"\
     && fnm install 22 \
     && fnm install 24 \
     && fnm install --lts \
-    && fnm default 22 \
+    && fnm default 24 \
     && node -v \
-    && npm --version
+    && npm --version \
+    && npm install -g pnpm \
+    && pnpm --version
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
@@ -178,7 +180,7 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
 ENV PATH="${PATH}:/home/agent/.npm-global/bin"
 RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
-    && fnm use 22 --install-if-missing \
+    && fnm use 24 --install-if-missing \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
