@@ -200,10 +200,16 @@ RUN dotnet tool install --global dpi \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger
 
-# Install Cursor CLI
+# Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
+
+# Install Cursor CLI
 RUN curl -fsSL https://cursor.com/install | bash \
     && cursor-agent --version
+
+# Install Claude
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && claude --version
 
 # Prime .NET
 RUN ./primedotnet.ps1
