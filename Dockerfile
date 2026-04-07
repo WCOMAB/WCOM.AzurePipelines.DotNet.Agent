@@ -200,7 +200,8 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global dotnet-outdated-tool \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger \
-    && dotnet tool install --global csharp-ls
+    && dotnet tool install --global roslyn-language-server --prerelease \
+    && roslyn-language-server --version
 
 # Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
@@ -213,7 +214,18 @@ RUN curl -fsSL https://cursor.com/install | bash \
 RUN curl -fsSL https://claude.ai/install.sh | bash \
     && claude --version \
     && claude plugin marketplace add anthropics/claude-plugins-official \
-    && claude plugin install csharp-lsp \
+    && claude plugin marketplace add dotnet/skills \
+    && claude plugin install dotnet \
+    && claude plugin install dotnet-data \
+    && claude plugin install dotnet-diag \
+    && claude plugin install dotnet-msbuild \
+    && claude plugin install dotnet-nuget \
+    && claude plugin install dotnet-upgrade \
+    && claude plugin install dotnet-maui \
+    && claude plugin install dotnet-ai \
+    && claude plugin install dotnet-template-engine \
+    && claude plugin install dotnet-test \
+    && claude plugin install dotnet-aspnet \
     && claude plugin install typescript-lsp
 
 # Prime .NET
