@@ -184,6 +184,7 @@ RUN eval "$(fnm env --shell bash)" \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
+    && npm install -g typescript-language-server typescript \
     && npm install -g renovate \
     && npm rebuild --global renovate \
     && npm rebuild --global re2
@@ -198,7 +199,8 @@ RUN dotnet tool install --global dpi \
     && sqlpackage /version \
     && dotnet tool install --global dotnet-outdated-tool \
     && dotnet-outdated --version \
-    && dotnet tool install --global azdomerger
+    && dotnet tool install --global azdomerger \
+    && dotnet tool install --global csharp-ls
 
 # Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
@@ -209,7 +211,9 @@ RUN curl -fsSL https://cursor.com/install | bash \
 
 # Install Claude
 RUN curl -fsSL https://claude.ai/install.sh | bash \
-    && claude --version
+    && claude --version \
+    && claude plugin install csharp-lsp \
+    && claude plugin install typescript-lsp
 
 # Prime .NET
 RUN ./primedotnet.ps1
