@@ -212,6 +212,7 @@ RUN curl -fsSL https://cursor.com/install | bash \
 # Install Claude
 RUN curl -fsSL https://claude.ai/install.sh | bash \
     && claude --version \
+    && claude plugin marketplace add anthropics/claude-plugins-official \
     && claude plugin install csharp-lsp \
     && claude plugin install typescript-lsp
 
