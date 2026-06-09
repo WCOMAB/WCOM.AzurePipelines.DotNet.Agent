@@ -225,7 +225,7 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && claude plugin install dotnet-ai \
     && claude plugin install dotnet-template-engine \
     && claude plugin install dotnet-test \
-    && claude plugin install dotnet-aspnet \
+    && claude plugin install dotnet-aspnet@dotnet-agent-skills \
     && claude plugin install typescript-lsp
 
 # Prime .NET
