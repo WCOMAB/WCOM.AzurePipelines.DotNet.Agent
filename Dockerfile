@@ -200,8 +200,7 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global dotnet-outdated-tool \
     && dotnet-outdated --version \
     && dotnet tool install --global azdomerger \
-    && dotnet tool install --global roslyn-language-server --prerelease \
-    && roslyn-language-server --version
+    && dotnet tool install --global roslyn-language-server --prerelease
 
 # Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
