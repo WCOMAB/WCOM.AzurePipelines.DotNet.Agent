@@ -1,7 +1,7 @@
 #!/usr/share/powershell/pwsh
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 7.3
-
+$env:Verify_GitHubSponsorAccount='wcomab'
 [string[]] $netversions = @(
     '8.0',
     '9.0',
