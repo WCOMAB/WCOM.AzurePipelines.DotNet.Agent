@@ -1,18 +1,17 @@
 #!/bin/bash
-if ! [[ "18.04 20.04 22.04 23.04 24.04" == *"$(lsb_release -rs)"* ]];
+UBUNTU_VERSION="$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2)"
+if ! [[ "18.04 20.04 22.04 24.04 26.04" == *"${UBUNTU_VERSION}"* ]];
 then
-    echo "Ubuntu $(lsb_release -rs) is not currently supported.";
+    echo "Ubuntu ${UBUNTU_VERSION} is not currently supported.";
     exit;
 fi
 
-# Add the signature to trust the Microsoft repo
-# For Ubuntu versions < 24.04 
-curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc
-# For Ubuntu versions >= 24.04
-curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-
-# Add repo to apt sources
-curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | tee /etc/apt/sources.list.d/mssql-release.list
+# Download the package to configure the Microsoft repo
+curl -sSL -O https://packages.microsoft.com/config/ubuntu/${UBUNTU_VERSION}/packages-microsoft-prod.deb
+# Install the package
+dpkg -i packages-microsoft-prod.deb
+# Delete the file
+rm packages-microsoft-prod.deb
 
 # Install the driver
 apt-get update
