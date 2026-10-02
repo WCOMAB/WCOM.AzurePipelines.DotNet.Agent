@@ -14,6 +14,7 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 * Node LTS
 * Buildah (Container tagging and publishing)
 * Crane (Container archive publishing)
+* Playwright browser system dependencies (jobs install their own browsers)
 
 ## Environment variables
 

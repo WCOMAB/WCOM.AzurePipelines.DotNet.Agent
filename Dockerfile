@@ -162,6 +162,17 @@ RUN eval "$(fnm env --shell bash)"\
     && npm install -g pnpm \
     && ./recordversion.sh pnpm pnpm --version
 
+# Install Playwright browser system dependencies
+USER root
+RUN export FNM_DIR="${FNM_PATH}" \
+    && eval "$(fnm env --shell bash)" \
+    && export DEBIAN_FRONTEND=noninteractive \
+    && export npm_config_cache=/tmp/playwright-npm-cache \
+    && npx --yes playwright@1.63.0 install-deps \
+    && ./recordversion.sh "playwright deps" npx --yes playwright@1.63.0 --version \
+    && rm -rf /tmp/playwright-npm-cache /root/.npm
+USER agent
+
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
 
