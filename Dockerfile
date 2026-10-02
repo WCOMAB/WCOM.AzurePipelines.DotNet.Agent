@@ -191,9 +191,9 @@ RUN eval "$(fnm env --shell bash)" \
     && cd /tmp/renovate-install \
     && npm exec --yes --package=pnpm@11 pnpm -- add --global --global-bin-dir "${PNPM_HOME}" --allow-build=re2 renovate@latest \
     && renovate --version \
-    && RE2_DIR="$(find "${PNPM_HOME}/global/v11" -mindepth 1 -maxdepth 1 -type d | head -n 1)" \
-    && test -n "${RE2_DIR}" \
-    && (cd "${RE2_DIR}" && node -e "new (require('re2'))('.*').exec('test')")
+    && export RE2_PKG="$(find "${PNPM_HOME}" -type d -path '*/node_modules/re2' | head -n 1)" \
+    && test -n "${RE2_PKG}" \
+    && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')"
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
