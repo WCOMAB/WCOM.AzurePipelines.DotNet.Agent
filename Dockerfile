@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:11.0-resolute-aot AS build
+FROM ubuntu:26.04 AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
@@ -12,29 +12,45 @@ LABEL "io.containers.capabilities"="CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BI
 
 USER root
 
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install -y curl git jq libicu78 wget apt-transport-https software-properties-common
-RUN apt-get install -y zip python3 python3-pip unzip ca-certificates gnupg
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Buildah
+# Install base packages, Buildah, and Skopeo
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
-    && DEBIAN_FRONTEND=noninteractive \
     && dpkg --configure -a \
-    && apt-get install -y tzdata \
-    && apt-get install -y buildah \
-    && apt-get install fuse-overlayfs
-
-# Install Skopeo
-RUN apt-get -y install skopeo
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        buildah \
+        ca-certificates \
+        clang \
+        curl \
+        fuse-overlayfs \
+        git \
+        gnupg \
+        jq \
+        libicu78 \
+        libssl3t64 \
+        llvm \
+        python3 \
+        python3-pip \
+        skopeo \
+        software-properties-common \
+        tzdata \
+        unzip \
+        wget \
+        zip \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
-    && az upgrade --all --yes
+    && az upgrade --all --yes \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Azure Developer CLI
 RUN curl -fsSL https://aka.ms/install-azd.sh | bash \
-    && azd version
+    && azd version \
+    && rm -rf /tmp/* /var/tmp/*
 
 # Install Bicep
 RUN curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64 \
@@ -52,7 +68,8 @@ RUN mkdir -p /etc/apt/keyrings \
     && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list \
     && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
-    && apt-get install -y kubectl
+    && apt-get install -y --no-install-recommends kubectl \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install regctl
 RUN curl -Lo regctl https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 \
@@ -139,7 +156,8 @@ RUN sed -e 's|^#mount_program|mount_program|g' \
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
 RUN ./installsqltools.sh \
-    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?"
+    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?" \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install crane
 RUN ./crane.sh
@@ -149,10 +167,8 @@ USER agent
 # Install Node
 ENV FNM_PATH="/home/agent/.local/share/fnm"
 ENV PATH="${PATH}:${FNM_PATH}"
-RUN curl -fsSL https://fnm.vercel.app/install | bash 
-RUN eval "$(fnm env --shell bash)"\
-    && fnm install 18 \
-    && fnm install 20 \
+RUN curl -fsSL https://fnm.vercel.app/install | bash \
+    && eval "$(fnm env --shell bash)" \
     && fnm install 22 \
     && fnm install 24 \
     && fnm install --lts \
@@ -160,7 +176,9 @@ RUN eval "$(fnm env --shell bash)"\
     && ./recordversion.sh node node -v \
     && ./recordversion.sh "npm (initial)" npm --version \
     && npm install -g pnpm \
-    && ./recordversion.sh pnpm pnpm --version
+    && ./recordversion.sh pnpm pnpm --version \
+    && npm cache clean --force \
+    && rm -rf /home/agent/.npm /tmp/npm-* /tmp/fnm*
 
 # Install Playwright browser system dependencies
 USER root
@@ -170,7 +188,7 @@ RUN export FNM_DIR="${FNM_PATH}" \
     && export npm_config_cache=/tmp/playwright-npm-cache \
     && npx --yes playwright@1.63.0 install-deps \
     && ./recordversion.sh "playwright deps" npx --yes playwright@1.63.0 --version \
-    && rm -rf /tmp/playwright-npm-cache /root/.npm
+    && rm -rf /tmp/* /root/.npm /var/lib/apt/lists/* /var/cache/apt/archives/*
 USER agent
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
@@ -191,12 +209,29 @@ RUN mkdir /azp/nuget \
     && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet
+    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet \
+    && rm -f dotnet-install.sh
+
+# Install framework-dependent PowerShell
+USER root
+RUN powershell_version=7.6.6 \
+    && curl --fail --show-error --location --output "/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+        "https://powershellinfraartifacts-gkhedzdeaghdezhr.z01.azurefd.net/tool/${powershell_version}/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+    && mkdir -p /usr/share/powershell \
+    && /azp/tools/dotnet/dotnet tool install --add-source / --tool-path /usr/share/powershell --version "${powershell_version}" PowerShell.Linux.x64 \
+    && rm -f "/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+    && ln -sf /usr/share/powershell/pwsh /usr/bin/pwsh \
+    && chmod 755 /usr/share/powershell/pwsh \
+    && chmod 755 /usr/share/powershell/.store/powershell.linux.x64/${powershell_version}/powershell.linux.x64/${powershell_version}/tools/*/any/pwsh \
+    && find /usr/share/powershell -iname '*.nupkg' -delete \
+    && ./recordversion.sh pwsh pwsh --version
+USER agent
 
 # Install DevOps Agent
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && export AZP_URL=${BUILD_AZP_URL} \
-    && ./install.sh
+    && ./install.sh \
+    && rm -rf /azp/externals/node /azp/externals/node10 /azp/externals/node16 /azp/externals/node20_1
 
 # Configure Node, Install Azurite & Renovate
 ENV PNPM_HOME="/home/agent/.local/share/pnpm"
@@ -215,7 +250,10 @@ RUN eval "$(fnm env --shell bash)" \
     && /azp/recordversion.sh renovate renovate --version \
     && export RE2_PKG="$(find "${PNPM_HOME}" -type d -path '*/node_modules/re2' | head -n 1)" \
     && test -n "${RE2_PKG}" \
-    && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')"
+    && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')" \
+    && npm cache clean --force \
+    && pnpm store prune \
+    && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
