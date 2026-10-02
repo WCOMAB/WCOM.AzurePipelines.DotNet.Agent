@@ -1,0 +1,8 @@
+.git
+.gitignore
+.gitattributes
+README.md
+LICENSE
+azure-pipelines.yml
+renovate.json
+**/*.md
