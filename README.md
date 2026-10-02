@@ -4,17 +4,50 @@
 
 Docker image which can be used to build Azure Pipelines .NET workloads running on i.e. in a AKS cluster. Based on Ubuntu 26.04.
 
-## Installed SDKs
+## SDKs
 
 * .NET 8
 * .NET 9
 * .NET 10
 * .NET 11 (RC1 / go-live)
+* Node 18
+* Node 20
+* Node 22
+* Node 24 (fnm default)
+* pnpm
+
+## Azure
+
 * Azure CLI
-* Node LTS
-* Buildah (Container tagging and publishing)
-* Crane (Container archive publishing)
+* Azure Developer CLI (`azd`)
+* Bicep (standalone binary and `az bicep`)
+
+## Containers and Kubernetes
+
+* Buildah (container tagging and publishing)
+* Skopeo
+* Crane (container archive publishing)
+* regctl
+* kubectl
+
+## SQL
+
+* sqlcmd and the Microsoft SQL ODBC driver
+* sqlpackage
+
+## Tools
+
 * Playwright browser system dependencies (jobs install their own browsers)
+* Azurite
+* Renovate
+* Cake
+* dpi
+* dotnet-outdated
+
+## Coding agents
+
+* Cursor CLI (`cursor-agent`)
+* Claude Code with the official .NET plugin set
 
 ## Environment variables
 
