@@ -7,7 +7,7 @@ trigger:
 jobs:
 - job: Docker
   pool:
-    vmImage: ubuntu-latest
+    vmImage: ubuntu-26.04
   variables:
     imageName: $(CONTAINER_REGISTRY)/azp-dotnet-agent
     isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
