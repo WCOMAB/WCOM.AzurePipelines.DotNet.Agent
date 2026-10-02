@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-aot AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-resolute-aot AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
@@ -6,6 +6,7 @@ ARG BUILD_AZP_VERSION=1.0.0.0
 ENV TARGETARCH="linux-x64"
 ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
+ENV TOOL_VERSIONS_FILE="/azp/tool-versions.tsv"
 
 LABEL "io.containers.capabilities"="CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,SYS_CHROOT"
 
@@ -13,7 +14,7 @@ USER root
 
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install -y curl git jq libicu74 wget apt-transport-https software-properties-common
+RUN apt-get install -y curl git jq libicu78 wget apt-transport-https software-properties-common
 RUN apt-get install -y zip python3 python3-pip unzip ca-certificates gnupg
 
 # Install Buildah
@@ -66,14 +67,23 @@ COPY ./start.sh /azp/
 COPY ./primedotnet.ps1 /azp/
 COPY ./installsqltools.sh /azp/
 COPY ./crane.sh /azp/
+COPY ./recordversion.sh /azp/
 
 RUN chmod +x ./install.sh \
     && chmod +x ./start.sh \
     && chmod +x ./primedotnet.ps1 \
     && chmod +x installsqltools.sh \
     && chmod +x ./crane.sh \
+    && chmod +x ./recordversion.sh \
+    && : > "${TOOL_VERSIONS_FILE}" \
     && adduser --disabled-password agent \
     && chown -R agent ./
+
+# Record versions installed before the recorder was available
+RUN ./recordversion.sh azd azd version \
+    && ./recordversion.sh bicep bicep --version \
+    && ./recordversion.sh "az bicep" az bicep version \
+    && ./recordversion.sh regctl regctl version
 
 # Configuration for Skopeo
 RUN mkdir -p /run/containers \
@@ -129,7 +139,7 @@ RUN sed -e 's|^#mount_program|mount_program|g' \
 # Install MS SQL Tools / Drivers
 ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
 RUN ./installsqltools.sh \
-    && sqlcmd "-?"
+    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?"
 
 # Install crane
 RUN ./crane.sh
@@ -147,10 +157,10 @@ RUN eval "$(fnm env --shell bash)"\
     && fnm install 24 \
     && fnm install --lts \
     && fnm default 24 \
-    && node -v \
-    && npm --version \
+    && ./recordversion.sh node node -v \
+    && ./recordversion.sh "npm (initial)" npm --version \
     && npm install -g pnpm \
-    && pnpm --version
+    && ./recordversion.sh pnpm pnpm --version
 
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
@@ -169,7 +179,8 @@ RUN mkdir /azp/nuget \
     && chmod +x "dotnet-install.sh" \
     && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet
+    && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet
 
 # Install DevOps Agent
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
@@ -183,14 +194,14 @@ RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
     && mkdir -p "${PNPM_HOME}" \
     && fnm use 24 --install-if-missing \
-    && npm --version \
+    && ./recordversion.sh "npm (node 24)" npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
     && npm install -g typescript-language-server typescript \
     && mkdir -p /tmp/renovate-install \
     && cd /tmp/renovate-install \
     && npm exec --yes --package=pnpm@11 pnpm -- add --global --global-bin-dir "${PNPM_HOME}" --allow-build=re2 renovate@latest \
-    && renovate --version \
+    && /azp/recordversion.sh renovate renovate --version \
     && export RE2_PKG="$(find "${PNPM_HOME}" -type d -path '*/node_modules/re2' | head -n 1)" \
     && test -n "${RE2_PKG}" \
     && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')"
@@ -198,26 +209,28 @@ RUN eval "$(fnm env --shell bash)" \
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
 RUN dotnet tool install --global dpi \
-    && dpi --version \
+    && ./recordversion.sh dpi dpi --version \
     && dotnet tool install --global Cake.Tool \
-    && dotnet cake --info \
+    && ./recordversion.sh Cake dotnet cake --version \
     && dotnet tool install --global microsoft.sqlpackage \
-    && sqlpackage /version \
+    && ./recordversion.sh sqlpackage sqlpackage /version \
     && dotnet tool install --global dotnet-outdated-tool \
-    && dotnet-outdated --version \
+    && ./recordversion.sh dotnet-outdated dotnet-outdated --version \
     && dotnet tool install --global azdomerger \
-    && dotnet tool install --global roslyn-language-server --prerelease
+    && dotnet tool install --global roslyn-language-server --prerelease \
+    && dotnet new install xunit.v3.templates::4.0.1 \
+    && dotnet new list xunit3
 
 # Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
 
 # Install Cursor CLI
 RUN curl -fsSL https://cursor.com/install | bash \
-    && cursor-agent --version
+    && ./recordversion.sh cursor-agent cursor-agent --version
 
 # Install Claude
 RUN curl -fsSL https://claude.ai/install.sh | bash \
-    && claude --version \
+    && ./recordversion.sh claude claude --version \
     && claude plugin marketplace add anthropics/claude-plugins-official \
     && claude plugin marketplace add dotnet/skills \
     && claude plugin install dotnet \
@@ -234,5 +247,9 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
 
 # Prime .NET
 RUN ./primedotnet.ps1
+
+RUN echo 'Tool                     Version' \
+    && echo '------------------------ ----------------------------------------' \
+    && awk -F '\t' '{ printf "%-24s %s\n", $1, $2 }' "${TOOL_VERSIONS_FILE}"
 
 ENTRYPOINT ./start.sh

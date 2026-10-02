@@ -2,13 +2,14 @@
 
 [![Build Status](https://dev.azure.com/wcom/General/_apis/build/status%2FWCOM.AzurePipelines.DotNet.Agent?branchName=main)](https://dev.azure.com/wcom/General/_build/latest?definitionId=105&branchName=main)
 
-Docker image which can be used to build Azure Pipelines .NET workloads running on i.e. in a AKS cluster.
+Docker image which can be used to build Azure Pipelines .NET workloads running on i.e. in a AKS cluster. Based on Ubuntu 26.04.
 
 ## Installed SDKs
 
 * .NET 8
 * .NET 9
 * .NET 10
+* .NET 11 (RC1 / go-live)
 * Azure CLI
 * Node LTS
 * Buildah (Container tagging and publishing)
