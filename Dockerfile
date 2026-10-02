@@ -177,17 +177,23 @@ RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && ./install.sh
 
 # Configure Node, Install Azurite & Renovate
-ENV PATH="${PATH}:/home/agent/.npm-global/bin"
+ENV PNPM_HOME="/home/agent/.local/share/pnpm"
+ENV PATH="${PNPM_HOME}:${PATH}:/home/agent/.npm-global/bin"
 RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
+    && mkdir -p "${PNPM_HOME}" \
     && fnm use 24 --install-if-missing \
     && npm --version \
     && npm config set prefix '/home/agent/.npm-global' \
     && npm install -g azurite \
     && npm install -g typescript-language-server typescript \
-    && npm install -g renovate \
-    && npm rebuild --global renovate \
-    && npm rebuild --global re2
+    && mkdir -p /tmp/renovate-install \
+    && cd /tmp/renovate-install \
+    && npm exec --yes --package=pnpm@11 pnpm -- add --global --global-bin-dir "${PNPM_HOME}" --allow-build=re2 renovate@latest \
+    && renovate --version \
+    && RE2_DIR="$(find "${PNPM_HOME}/global/v11" -mindepth 1 -maxdepth 1 -type d | head -n 1)" \
+    && test -n "${RE2_DIR}" \
+    && (cd "${RE2_DIR}" && node -e "new (require('re2'))('.*').exec('test')")
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
