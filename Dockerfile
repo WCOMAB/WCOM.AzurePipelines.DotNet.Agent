@@ -194,6 +194,12 @@ USER agent
 ENV AGENT_TOOLSDIRECTORY="/azp/tools"
 RUN mkdir /azp/tools
 
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends jdupes \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+USER agent
+
 # Install .NET
 ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES"
 ENV NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH"
@@ -210,7 +216,9 @@ RUN mkdir /azp/nuget \
     && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet \
-    && rm -f dotnet-install.sh
+    && rm -f dotnet-install.sh \
+    && jdupes -r -L -t /azp/tools/dotnet \
+    && jdupes -r -l -I -t /azp/tools/dotnet/sdk/*
 
 # Install framework-dependent PowerShell
 USER root
@@ -224,7 +232,8 @@ RUN powershell_version=7.6.6 \
     && chmod 755 /usr/share/powershell/pwsh \
     && chmod 755 /usr/share/powershell/.store/powershell.linux.x64/${powershell_version}/powershell.linux.x64/${powershell_version}/tools/*/any/pwsh \
     && find /usr/share/powershell -iname '*.nupkg' -delete \
-    && ./recordversion.sh pwsh pwsh --version
+    && ./recordversion.sh pwsh pwsh --version \
+    && jdupes -r -L -t /usr/share/powershell
 USER agent
 
 # Install DevOps Agent
@@ -253,7 +262,8 @@ RUN eval "$(fnm env --shell bash)" \
     && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')" \
     && npm cache clean --force \
     && pnpm store prune \
-    && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm
+    && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm \
+    && jdupes -r -L -t /home/agent/.npm-global "${PNPM_HOME}"
 
 # Install Global tools
 ENV PATH="${PATH}:/home/agent/.dotnet/tools"
@@ -268,14 +278,16 @@ RUN dotnet tool install --global dpi \
     && dotnet tool install --global azdomerger \
     && dotnet tool install --global roslyn-language-server --prerelease \
     && dotnet new install xunit.v3.templates::4.0.1 \
-    && dotnet new list xunit3
+    && dotnet new list xunit3 \
+    && jdupes -r -L -t /home/agent/.dotnet/tools /azp/nuget
 
 # Path for local/user binaries
 ENV PATH="${PATH}:/home/agent/.local/bin"
 
 # Install Cursor CLI
 RUN curl -fsSL https://cursor.com/install | bash \
-    && ./recordversion.sh cursor-agent cursor-agent --version
+    && ./recordversion.sh cursor-agent cursor-agent --version \
+    && jdupes -r -L -t /home/agent/.local/share/cursor-agent
 
 # Install Claude
 RUN curl -fsSL https://claude.ai/install.sh | bash \
@@ -292,10 +304,12 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && claude plugin install dotnet-ai \
     && claude plugin install dotnet-template-engine \
     && claude plugin install dotnet-test \
-    && claude plugin install typescript-lsp
+    && claude plugin install typescript-lsp \
+    && jdupes -r -L -t /home/agent/.local/share/claude /home/agent/.claude
 
 # Prime .NET
-RUN ./primedotnet.ps1
+RUN ./primedotnet.ps1 \
+    && jdupes -r -L -t /azp/nuget /home/agent/.dotnet/tools
 
 RUN echo 'Tool                     Version' \
     && echo '------------------------ ----------------------------------------' \
