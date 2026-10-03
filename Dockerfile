@@ -3,10 +3,10 @@ ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
 
-ENV TARGETARCH="linux-x64"
-ENV VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
-ENV BUILD_AZP_VERSION="${BUILD_AZP_VERSION}"
-ENV TOOL_VERSIONS_FILE="/azp/tool-versions.tsv"
+ENV TARGETARCH="linux-x64" \
+    VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE" \
+    BUILD_AZP_VERSION="${BUILD_AZP_VERSION}" \
+    TOOL_VERSIONS_FILE="/azp/tool-versions.tsv"
 
 LABEL "io.containers.capabilities"="CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,CHOWN,DAC_OVERRIDE,FOWNER,FSETID,KILL,NET_BIND_SERVICE,SETFCAP,SETGID,SETPCAP,SETUID,SYS_CHROOT"
 
@@ -14,7 +14,8 @@ USER root
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install base packages, Buildah, and Skopeo
+# Install base packages, Buildah, Skopeo, kubectl, and SQL tools
+ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && dpkg --configure -a \
     && apt-get update \
@@ -27,6 +28,7 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
         fuse-overlayfs \
         git \
         gnupg \
+        jdupes \
         jq \
         libicu78 \
         libssl3t64 \
@@ -40,6 +42,20 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
         wget \
         zip \
         zlib1g-dev \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list \
+    && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
+    && curl -fsSL -o /tmp/packages-microsoft-prod.deb \
+        https://packages.microsoft.com/config/ubuntu/26.04/packages-microsoft-prod.deb \
+    && dpkg -i /tmp/packages-microsoft-prod.deb \
+    && rm -f /tmp/packages-microsoft-prod.deb \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+        kubectl \
+        msodbcsql18 \
+        mssql-tools18 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Azure CLI
@@ -61,16 +77,6 @@ RUN curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep
     && bicep --version \
     && az bicep version
 
-# Install Kubectl
-RUN mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list \
-    && chmod 644 /etc/apt/sources.list.d/kubernetes.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends kubectl \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-
 # Install regctl
 RUN curl -Lo regctl https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 \
     && chmod +x regctl \
@@ -82,14 +88,12 @@ WORKDIR /azp/
 COPY ./install.sh /azp/
 COPY ./start.sh /azp/
 COPY ./primedotnet.ps1 /azp/
-COPY ./installsqltools.sh /azp/
 COPY ./crane.sh /azp/
 COPY ./recordversion.sh /azp/
 
 RUN chmod +x ./install.sh \
     && chmod +x ./start.sh \
     && chmod +x ./primedotnet.ps1 \
-    && chmod +x installsqltools.sh \
     && chmod +x ./crane.sh \
     && chmod +x ./recordversion.sh \
     && : > "${TOOL_VERSIONS_FILE}" \
@@ -100,7 +104,8 @@ RUN chmod +x ./install.sh \
 RUN ./recordversion.sh azd azd version \
     && ./recordversion.sh bicep bicep --version \
     && ./recordversion.sh "az bicep" az bicep version \
-    && ./recordversion.sh regctl regctl version
+    && ./recordversion.sh regctl regctl version \
+    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?"
 
 # Configuration for Skopeo
 RUN mkdir -p /run/containers \
@@ -112,6 +117,10 @@ RUN mkdir -p /home/agent/.local/share/containers \
     && mkdir -p /var/lib/containers \
     && mkdir -p /etc/containers/ \
     && mkdir -p /home/agent/.config/containers \
+    && mkdir -p /home/agent/.azure/bin \
+    && ln -sfn /usr/local/bin/bicep /home/agent/.azure/bin/bicep \
+    && HOME=/home/agent az config set bicep.check_version=False \
+    && HOME=/home/agent az config set bicep.use_binary_from_path=True \
     && chown agent:agent -R /home/agent \
     && chown agent:agent -R /home/agent/.local \
     && chown agent:agent -R /var/lib/containers \
@@ -153,20 +162,15 @@ RUN sed -e 's|^#mount_program|mount_program|g' \
         chown agent:agent /home/agent/.config/containers/storage.conf && \
         chmod 4755 /usr/bin/newuidmap /usr/bin/newgidmap
 
-# Install MS SQL Tools / Drivers
-ENV PATH="${PATH}:/opt/mssql-tools18/bin/"
-RUN ./installsqltools.sh \
-    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?" \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-
 # Install crane
 RUN ./crane.sh
 
 USER agent
 
-# Install Node
-ENV FNM_PATH="/home/agent/.local/share/fnm"
-ENV PATH="${PATH}:${FNM_PATH}"
+# Install Node, Azurite, Renovate, Cursor, and Claude in one layer for jdupes
+ENV FNM_PATH="/home/agent/.local/share/fnm" \
+    PNPM_HOME="/home/agent/.local/share/pnpm" \
+    PATH="${PATH}:/home/agent/.local/share/fnm:/home/agent/.local/share/pnpm:/home/agent/.npm-global/bin:/home/agent/.local/bin"
 RUN curl -fsSL https://fnm.vercel.app/install | bash \
     && eval "$(fnm env --shell bash)" \
     && fnm install 22 \
@@ -177,75 +181,6 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash \
     && ./recordversion.sh "npm (initial)" npm --version \
     && npm install -g pnpm \
     && ./recordversion.sh pnpm pnpm --version \
-    && npm cache clean --force \
-    && rm -rf /home/agent/.npm /tmp/npm-* /tmp/fnm*
-
-# Install Playwright browser system dependencies
-USER root
-RUN export FNM_DIR="${FNM_PATH}" \
-    && eval "$(fnm env --shell bash)" \
-    && export DEBIAN_FRONTEND=noninteractive \
-    && export npm_config_cache=/tmp/playwright-npm-cache \
-    && npx --yes playwright@1.63.0 install-deps \
-    && ./recordversion.sh "playwright deps" npx --yes playwright@1.63.0 --version \
-    && rm -rf /tmp/* /root/.npm /var/lib/apt/lists/* /var/cache/apt/archives/*
-USER agent
-
-ENV AGENT_TOOLSDIRECTORY="/azp/tools"
-RUN mkdir /azp/tools
-
-USER root
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends jdupes \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-USER agent
-
-# Install .NET
-ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES"
-ENV NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH"
-ENV PATH="/azp/tools/dotnet:${PATH}"
-ENV DOTNET_ROOT="/azp/tools/dotnet"
-ENV DOTNET_HOST_PATH="/azp/tools/dotnet/dotnet"
-RUN mkdir /azp/nuget \
-    && mkdir /azp/nuget/NUGET_PACKAGES \
-    && mkdir /azp/nuget/NUGET_HTTP_CACHE_PATH \
-    && mkdir /azp/tools/dotnet \
-    && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
-    && chmod +x "dotnet-install.sh" \
-    && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet \
-    && rm -f dotnet-install.sh \
-    && jdupes -r -L -t /azp/tools/dotnet \
-    && jdupes -r -l -I -t /azp/tools/dotnet/sdk/*
-
-# Install framework-dependent PowerShell
-USER root
-RUN powershell_version=7.6.6 \
-    && curl --fail --show-error --location --output "/PowerShell.Linux.x64.${powershell_version}.nupkg" \
-        "https://powershellinfraartifacts-gkhedzdeaghdezhr.z01.azurefd.net/tool/${powershell_version}/PowerShell.Linux.x64.${powershell_version}.nupkg" \
-    && mkdir -p /usr/share/powershell \
-    && /azp/tools/dotnet/dotnet tool install --add-source / --tool-path /usr/share/powershell --version "${powershell_version}" PowerShell.Linux.x64 \
-    && rm -f "/PowerShell.Linux.x64.${powershell_version}.nupkg" \
-    && ln -sf /usr/share/powershell/pwsh /usr/bin/pwsh \
-    && chmod 755 /usr/share/powershell/pwsh \
-    && chmod 755 /usr/share/powershell/.store/powershell.linux.x64/${powershell_version}/powershell.linux.x64/${powershell_version}/tools/*/any/pwsh \
-    && find /usr/share/powershell -iname '*.nupkg' -delete \
-    && ./recordversion.sh pwsh pwsh --version \
-    && jdupes -r -L -t /usr/share/powershell
-USER agent
-
-# Install DevOps Agent
-RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
-    && export AZP_URL=${BUILD_AZP_URL} \
-    && ./install.sh \
-    && rm -rf /azp/externals/node /azp/externals/node10 /azp/externals/node16 /azp/externals/node20_1
-
-# Configure Node, Install Azurite & Renovate
-ENV PNPM_HOME="/home/agent/.local/share/pnpm"
-ENV PATH="${PNPM_HOME}:${PATH}:/home/agent/.npm-global/bin"
-RUN eval "$(fnm env --shell bash)" \
     && mkdir /home/agent/.npm-global \
     && mkdir -p "${PNPM_HOME}" \
     && fnm use 24 --install-if-missing \
@@ -260,38 +195,10 @@ RUN eval "$(fnm env --shell bash)" \
     && export RE2_PKG="$(find "${PNPM_HOME}" -type d -path '*/node_modules/re2' | head -n 1)" \
     && test -n "${RE2_PKG}" \
     && node -e "new (require(process.env.RE2_PKG))('.*').exec('test')" \
-    && npm cache clean --force \
-    && pnpm store prune \
-    && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm \
-    && jdupes -r -L -t /home/agent/.npm-global "${PNPM_HOME}"
-
-# Install Global tools
-ENV PATH="${PATH}:/home/agent/.dotnet/tools"
-RUN dotnet tool install --global dpi \
-    && ./recordversion.sh dpi dpi --version \
-    && dotnet tool install --global Cake.Tool \
-    && ./recordversion.sh Cake dotnet cake --version \
-    && dotnet tool install --global microsoft.sqlpackage \
-    && ./recordversion.sh sqlpackage sqlpackage /version \
-    && dotnet tool install --global dotnet-outdated-tool \
-    && ./recordversion.sh dotnet-outdated dotnet-outdated --version \
-    && dotnet tool install --global azdomerger \
-    && dotnet tool install --global roslyn-language-server --prerelease \
-    && dotnet new install xunit.v3.templates::4.0.1 \
-    && dotnet new list xunit3 \
-    && jdupes -r -L -t /home/agent/.dotnet/tools /azp/nuget
-
-# Path for local/user binaries
-ENV PATH="${PATH}:/home/agent/.local/bin"
-
-# Install Cursor CLI
-RUN curl -fsSL https://cursor.com/install | bash \
-    && ./recordversion.sh cursor-agent cursor-agent --version \
-    && jdupes -r -L -t /home/agent/.local/share/cursor-agent
-
-# Install Claude
-RUN curl -fsSL https://claude.ai/install.sh | bash \
-    && ./recordversion.sh claude claude --version \
+    && curl -fsSL https://cursor.com/install | bash \
+    && /azp/recordversion.sh cursor-agent cursor-agent --version \
+    && curl -fsSL https://claude.ai/install.sh | bash \
+    && /azp/recordversion.sh claude claude --version \
     && claude plugin marketplace add anthropics/claude-plugins-official \
     && claude plugin marketplace add dotnet/skills \
     && claude plugin install dotnet \
@@ -305,11 +212,85 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && claude plugin install dotnet-template-engine \
     && claude plugin install dotnet-test \
     && claude plugin install typescript-lsp \
-    && jdupes -r -L -t /home/agent/.local/share/claude /home/agent/.claude
+    && npm cache clean --force \
+    && pnpm store prune \
+    && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm /tmp/fnm* \
+    && jdupes -r -L -t /home/agent/.local/share /home/agent/.npm-global
 
-# Prime .NET
-RUN ./primedotnet.ps1 \
-    && jdupes -r -L -t /azp/nuget /home/agent/.dotnet/tools
+# Install Playwright browser system dependencies
+USER root
+RUN export FNM_DIR="${FNM_PATH}" \
+    && eval "$(fnm env --shell bash)" \
+    && export DEBIAN_FRONTEND=noninteractive \
+    && export npm_config_cache=/tmp/playwright-npm-cache \
+    && playwright_version="$(npm view playwright version)" \
+    && npx --yes "playwright@${playwright_version}" install-deps \
+    && ./recordversion.sh "playwright deps" echo "${playwright_version}" \
+    && rm -rf /tmp/* /root/.npm /var/lib/apt/lists/* /var/cache/apt/archives/*
+USER agent
+
+ENV AGENT_TOOLSDIRECTORY="/azp/tools"
+RUN mkdir /azp/tools
+
+# Publish PowerShell on usual /usr paths; install later fills these in
+USER root
+RUN ln -sfn /azp/tools/powershell /usr/share/powershell \
+    && ln -sfn /azp/tools/powershell/pwsh /usr/bin/pwsh
+USER agent
+
+# Install .NET SDKs, PowerShell, global tools, and prime NuGet in one layer
+ENV NUGET_PACKAGES="/azp/nuget/NUGET_PACKAGES" \
+    NUGET_HTTP_CACHE_PATH="/azp/nuget/NUGET_HTTP_CACHE_PATH" \
+    PATH="/azp/tools/dotnet:${PATH}:/home/agent/.dotnet/tools" \
+    DOTNET_ROOT="/azp/tools/dotnet" \
+    DOTNET_HOST_PATH="/azp/tools/dotnet/dotnet" \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_GENERATE_ASPNET_CERTIFICATE=false \
+    DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1 \
+    POWERSHELL_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_UPDATECHECK=Off
+RUN mkdir /azp/nuget \
+    && mkdir /azp/nuget/NUGET_PACKAGES \
+    && mkdir /azp/nuget/NUGET_HTTP_CACHE_PATH \
+    && mkdir /azp/tools/dotnet \
+    && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
+    && chmod +x "dotnet-install.sh" \
+    && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet \
+    && rm -f dotnet-install.sh \
+    && powershell_version="$(curl -fsSL https://aka.ms/pwsh-buildinfo-stable \
+        | jq -er '.ReleaseTag | ltrimstr("v")')" \
+    && curl --fail --show-error --location --output "/tmp/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+        "https://powershellinfraartifacts-gkhedzdeaghdezhr.z01.azurefd.net/tool/${powershell_version}/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+    && /azp/tools/dotnet/dotnet tool install --add-source /tmp --tool-path /azp/tools/powershell --version "${powershell_version}" PowerShell.Linux.x64 \
+    && rm -f "/tmp/PowerShell.Linux.x64.${powershell_version}.nupkg" \
+    && chmod 755 /azp/tools/powershell/pwsh \
+    && chmod 755 /azp/tools/powershell/.store/powershell.linux.x64/${powershell_version}/powershell.linux.x64/${powershell_version}/tools/*/any/pwsh \
+    && find /azp/tools/powershell -iname '*.nupkg' -delete \
+    && ./recordversion.sh pwsh pwsh --version \
+    && dotnet tool install --global dpi \
+    && ./recordversion.sh dpi dpi --version \
+    && dotnet tool install --global Cake.Tool \
+    && ./recordversion.sh Cake dotnet cake --version \
+    && dotnet tool install --global microsoft.sqlpackage \
+    && ./recordversion.sh sqlpackage sqlpackage /version \
+    && dotnet tool install --global dotnet-outdated-tool \
+    && ./recordversion.sh dotnet-outdated dotnet-outdated --version \
+    && dotnet tool install --global azdomerger \
+    && dotnet tool install --global roslyn-language-server --prerelease \
+    && dotnet new install xunit.v3.templates \
+    && dotnet new list xunit3 \
+    && ./primedotnet.ps1 \
+    && jdupes -r -L -t /azp/tools/dotnet /azp/tools/powershell /home/agent/.dotnet/tools /azp/nuget
+
+# Install DevOps Agent
+RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
+    && export AZP_URL=${BUILD_AZP_URL} \
+    && ./install.sh \
+    && rm -rf /azp/externals/node /azp/externals/node10 /azp/externals/node16 /azp/externals/node20_1
 
 RUN echo 'Tool                     Version' \
     && echo '------------------------ ----------------------------------------' \

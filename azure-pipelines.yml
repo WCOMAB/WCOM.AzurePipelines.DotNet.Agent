@@ -30,21 +30,33 @@ jobs:
   - script: |
       docker build --build-arg BUILD_AZP_TOKEN --build-arg BUILD_AZP_URL --build-arg BUILD_AZP_VERSION -t $(imageName):latest -t $(imageName):$(Build.BuildNumber) .
     displayName: Docker Build
+    condition: and(succeeded(), ne(variables.isMain, true))
     env:
       DOCKER_BUILDKIT: 1
       BUILD_AZP_TOKEN: $(System.AccessToken)
       BUILD_AZP_URL: $(System.CollectionUri)
-      BUILD_AZP_VERSION: $(Build.BuildNumber) 
-      
+      BUILD_AZP_VERSION: $(Build.BuildNumber)
+
   - task: AzureCLI@3.279.1
-    displayName: Docker Push
+    displayName: Docker Build and Push
     inputs:
       azureSubscription: WCOM ACR Push
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
         az acr login --name acrwcom
-        docker push $(imageName):$(Build.BuildNumber)
-        docker push $(imageName):latest
+        docker buildx build \
+          --build-arg BUILD_AZP_TOKEN \
+          --build-arg BUILD_AZP_URL \
+          --build-arg BUILD_AZP_VERSION \
+          --tag "$(imageName):latest" \
+          --tag "$(imageName):$(Build.BuildNumber)" \
+          --output type=registry,compression=gzip,compression-level=9,force-compression=true \
+          .
         docker logout
     condition: and(succeeded(), eq(variables.isMain, true))
+    env:
+      DOCKER_BUILDKIT: 1
+      BUILD_AZP_TOKEN: $(System.AccessToken)
+      BUILD_AZP_URL: $(System.CollectionUri)
+      BUILD_AZP_VERSION: $(Build.BuildNumber)
