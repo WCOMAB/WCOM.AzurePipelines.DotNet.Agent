@@ -167,10 +167,14 @@ RUN ./crane.sh
 
 USER agent
 
-# Install Node, Azurite, Renovate, Cursor, and Claude in one layer for jdupes
+# Install Node, Azurite, Renovate, Cursor, and Claude in one layer for jdupes.
+# Tasks such as PublishTestResults still declare a Node 20 handler. EOL agent
+# runtimes are removed after install; run those handlers on the bundled Node 24.
 ENV FNM_PATH="/home/agent/.local/share/fnm" \
     PNPM_HOME="/home/agent/.local/share/pnpm" \
-    PATH="${PATH}:/home/agent/.local/share/fnm:/home/agent/.local/share/pnpm:/home/agent/.npm-global/bin:/home/agent/.local/bin"
+    PATH="${PATH}:/home/agent/.local/share/fnm:/home/agent/.local/share/pnpm:/home/agent/.npm-global/bin:/home/agent/.local/bin" \
+    AGENT_USE_NODE24=true \
+    AGENT_USE_NODE24_WITH_HANDLER_DATA=true
 RUN curl -fsSL https://fnm.vercel.app/install | bash \
     && eval "$(fnm env --shell bash)" \
     && fnm install 22 \
@@ -290,6 +294,7 @@ RUN mkdir /azp/nuget \
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && export AZP_URL=${BUILD_AZP_URL} \
     && ./install.sh \
+    && ./recordversion.sh "agent node" /azp/externals/node24/bin/node -v \
     && rm -rf /azp/externals/node /azp/externals/node10 /azp/externals/node16 /azp/externals/node20_1
 
 RUN echo 'Tool                     Version' \
