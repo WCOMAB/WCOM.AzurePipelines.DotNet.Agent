@@ -53,7 +53,9 @@ jobs:
           --tag "$(imageName):$(Build.BuildNumber)" \
           --output type=registry,compression=gzip,compression-level=9,force-compression=true \
           .
-        docker logout
+        build_status=$?
+        docker logout || true
+        exit $build_status
     condition: and(succeeded(), eq(variables.isMain, true))
     env:
       DOCKER_BUILDKIT: 1
