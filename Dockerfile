@@ -294,8 +294,13 @@ RUN mkdir /azp/nuget \
 RUN export AZP_TOKEN=${BUILD_AZP_TOKEN} \
     && export AZP_URL=${BUILD_AZP_URL} \
     && ./install.sh \
-    && ./recordversion.sh "agent node" /azp/externals/node24/bin/node -v \
-    && rm -rf /azp/externals/node /azp/externals/node10 /azp/externals/node16 /azp/externals/node20_1
+    && rm -rf /azp/externals/node /azp/externals/node[0-9]* \
+    && eval "$(fnm env --shell bash)" \
+    && fnm default 24 \
+    && fnm use 24 \
+    && node24_root="$(dirname "$(dirname "$(readlink -f "$(command -v node)")")")" \
+    && test -x "${node24_root}/bin/node" \
+    && ln -sfn "${node24_root}" /azp/externals/node24
 
 RUN echo 'Tool                     Version' \
     && echo '------------------------ ----------------------------------------' \
