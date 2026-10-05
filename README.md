@@ -32,7 +32,7 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 
 ## SQL
 
-* sqlcmd and the Microsoft SQL ODBC driver
+* sqlcmd (Go), bcp, and the Microsoft SQL ODBC driver
 * sqlpackage
 
 ## Tools
