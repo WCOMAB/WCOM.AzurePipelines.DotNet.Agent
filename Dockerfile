@@ -22,6 +22,7 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
     && apt-get install -y --no-install-recommends \
         apt-transport-https \
         buildah \
+        bzip2 \
         ca-certificates \
         clang \
         curl \
@@ -83,6 +84,14 @@ RUN curl -Lo regctl https://github.com/regclient/regclient/releases/latest/downl
     && mv regctl /usr/local/bin/ \
     && regctl version
 
+# Install go-sqlcmd
+RUN curl -Lo sqlcmd.tar.bz2 https://github.com/microsoft/go-sqlcmd/releases/latest/download/sqlcmd-linux-amd64.tar.bz2 \
+    && tar -xjf sqlcmd.tar.bz2 sqlcmd \
+    && chmod +x sqlcmd \
+    && mv sqlcmd /usr/local/bin/ \
+    && rm sqlcmd.tar.bz2 \
+    && sqlcmd --version
+
 WORKDIR /azp/
 
 COPY ./install.sh /azp/
@@ -105,7 +114,7 @@ RUN ./recordversion.sh azd azd version \
     && ./recordversion.sh bicep bicep --version \
     && ./recordversion.sh "az bicep" az bicep version \
     && ./recordversion.sh regctl regctl version \
-    && ./recordversion.sh --extract Version sqlcmd sqlcmd "-?"
+    && ./recordversion.sh sqlcmd sqlcmd --version
 
 # Configuration for Skopeo
 RUN mkdir -p /run/containers \
