@@ -21,6 +21,7 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 * Azure CLI
 * Azure Developer CLI (`azd`)
 * Bicep (standalone binary and `az bicep`)
+* Azure Static Web Apps CLI (`swa`), with StaticSitesClient primed
 
 ## Containers and Kubernetes
 

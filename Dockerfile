@@ -230,6 +230,27 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash \
     && rm -rf /tmp/renovate-install /tmp/npm-* /home/agent/.npm /tmp/fnm* \
     && jdupes -r -L -t /home/agent/.local/share /home/agent/.npm-global
 
+# Install Azure Static Web Apps CLI and prime StaticSitesClient.
+# swa deploy downloads that binary on first use and logs
+# "Could not find StaticSitesClient local binary" until ~/.swa/deploy exists.
+RUN export FNM_DIR="${FNM_PATH}" \
+    && eval "$(fnm env --shell bash)" \
+    && fnm use 24 \
+    && npm install -g @azure/static-web-apps-cli \
+    && ./recordversion.sh swa swa --version \
+    && SWA_CLI_DEBUG=log node --input-type=module -e 'import { getDeployClientPath } from "/home/agent/.npm-global/lib/node_modules/@azure/static-web-apps-cli/dist/core/deploy-client.js"; const first = await getDeployClientPath(); if (!first || !first.binary) throw new Error("StaticSitesClient download failed"); const lines = []; const original = console.log; console.log = (...args) => { const line = args.map((arg) => String(arg)).join(" "); lines.push(line); original(...args); }; const second = await getDeployClientPath(); if (lines.some((line) => line.includes("Could not find StaticSitesClient local binary"))) throw new Error("StaticSitesClient was not primed"); if (second.buildId !== first.buildId) throw new Error("StaticSitesClient build id changed during prime"); original("StaticSitesClient primed " + second.buildId);' \
+    && ssc_bin="$(jq -er '.binary' /home/agent/.swa/deploy/StaticSitesClient.json)" \
+    && ssc_build="$(jq -er '.metadata.buildId' /home/agent/.swa/deploy/StaticSitesClient.json)" \
+    && test -x "${ssc_bin}" \
+    && ./recordversion.sh StaticSitesClient echo "${ssc_build}" \
+    && ssc_out="$(mktemp)" \
+    && ssc_status=0 \
+    && { timeout 30s "${ssc_bin}" --version >"${ssc_out}" 2>&1 || ssc_status=$?; } \
+    && if grep -Eq "valid ICU|error while loading shared libraries|Exec format error|Process terminated|You must install" "${ssc_out}"; then cat "${ssc_out}" >&2; exit 1; fi \
+    && if [ ! -s "${ssc_out}" ] && [ "${ssc_status}" != "124" ]; then echo "StaticSitesClient exited ${ssc_status} without output" >&2; exit 1; fi \
+    && rm -f "${ssc_out}" \
+    && npm cache clean --force
+
 # Install Playwright browser system dependencies
 USER root
 RUN export FNM_DIR="${FNM_PATH}" \
