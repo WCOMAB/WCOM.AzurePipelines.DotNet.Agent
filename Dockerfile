@@ -34,8 +34,11 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
         libicu78 \
         libssl3t64 \
         llvm \
+        patch \
         python3 \
         python3-pip \
+        ripgrep \
+        shellcheck \
         skopeo \
         software-properties-common \
         tzdata \
@@ -114,7 +117,10 @@ RUN ./recordversion.sh azd azd version \
     && ./recordversion.sh bicep bicep --version \
     && ./recordversion.sh "az bicep" az bicep version \
     && ./recordversion.sh regctl regctl version \
-    && ./recordversion.sh sqlcmd sqlcmd --version
+    && ./recordversion.sh sqlcmd sqlcmd --version \
+    && ./recordversion.sh rg rg --version \
+    && ./recordversion.sh patch patch --version \
+    && ./recordversion.sh shellcheck shellcheck --version
 
 # Configuration for Skopeo
 RUN mkdir -p /run/containers \
@@ -250,6 +256,16 @@ RUN export FNM_DIR="${FNM_PATH}" \
     && if [ ! -s "${ssc_out}" ] && [ "${ssc_status}" != "124" ]; then echo "StaticSitesClient exited ${ssc_status} without output" >&2; exit 1; fi \
     && rm -f "${ssc_out}" \
     && npm cache clean --force
+
+# Install Aider and OpenCode for jobs that talk to a local OpenAI-compatible
+# endpoint (LLAMA_BASE_URL). The image does not include a model runtime.
+RUN curl -fsSL https://aider.chat/install.sh | sh \
+    && mkdir -p /home/agent/.local/bin \
+    && curl -fsSL https://opencode.ai/install | bash \
+    && test -x /home/agent/.opencode/bin/opencode \
+    && ln -sfn /home/agent/.opencode/bin/opencode /home/agent/.local/bin/opencode \
+    && ./recordversion.sh aider aider --version \
+    && ./recordversion.sh opencode opencode --version
 
 # Install Playwright browser system dependencies
 USER root
