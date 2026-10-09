@@ -1,4 +1,4 @@
-FROM ubuntu:26.04 AS build
+FROM ghcr.io/canonical/ubuntu:26.04 AS build
 ARG BUILD_AZP_TOKEN
 ARG BUILD_AZP_URL
 ARG BUILD_AZP_VERSION=1.0.0.0
