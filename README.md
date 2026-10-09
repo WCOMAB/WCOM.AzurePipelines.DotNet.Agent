@@ -44,11 +44,16 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 * Cake
 * dpi
 * dotnet-outdated
+* ripgrep (`rg`)
+* patch
+* shellcheck
 
 ## Coding agents
 
 * Cursor CLI (`cursor-agent`)
 * Claude Code with the official .NET plugin set
+* Aider (`aider`), for local OpenAI-compatible endpoints
+* OpenCode (`opencode`), for local OpenAI-compatible endpoints
 
 ## Environment variables
 
