@@ -328,6 +328,7 @@ RUN mkdir /azp/nuget \
     && dotnet tool install --global dotnet-outdated-tool \
     && ./recordversion.sh dotnet-outdated dotnet-outdated --version \
     && dotnet tool install --global azdomerger \
+    && ./recordversion.sh --extract '^azdomerger' azdomerger dotnet tool list --global \
     && dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.6.0 \
     && ./recordversion.sh --extract '^dotnet-reportgenerator-globaltool' ReportGenerator dotnet tool list --global \
     && dotnet tool install --global roslyn-language-server --prerelease \
