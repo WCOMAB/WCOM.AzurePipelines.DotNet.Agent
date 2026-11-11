@@ -6,10 +6,8 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 
 ## SDKs
 
-* .NET 8
-* .NET 9
 * .NET 10
-* .NET 11 (RC1 / go-live)
+* .NET 11
 * Node 18
 * Node 20
 * Node 22

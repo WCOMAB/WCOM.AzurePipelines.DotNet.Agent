@@ -306,10 +306,8 @@ RUN mkdir /azp/nuget \
     && mkdir /azp/tools/dotnet \
     && curl -Lsfo "dotnet-install.sh" https://dot.net/v1/dotnet-install.sh \
     && chmod +x "dotnet-install.sh" \
-    && ./dotnet-install.sh --channel 8.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 9.0 --install-dir /azp/tools/dotnet \
     && ./dotnet-install.sh --channel 10.0 --install-dir /azp/tools/dotnet \
-    && ./dotnet-install.sh --channel 11.0 --quality preview --install-dir /azp/tools/dotnet \
+    && ./dotnet-install.sh --channel 11.0 --install-dir /azp/tools/dotnet \
     && rm -f dotnet-install.sh \
     && powershell_version="$(curl -fsSL https://aka.ms/pwsh-buildinfo-stable \
         | jq -er '.ReleaseTag | ltrimstr("v")')" \
