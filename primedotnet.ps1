@@ -41,7 +41,16 @@ $netversions `
              | Set-Location
 
             dotnet new $template -n $project --framework $framework
-            $ResultCode+=$LASTEXITCODE
+            if ($LASTEXITCODE -ne 0)
+            {
+                # Template doesn't support framework yet, create with default and retarget
+                dotnet new $template -n $project
+                $ResultCode+=$LASTEXITCODE
+                [string] $csproj = "$project/$project.csproj"
+                (Get-Content -Raw $csproj) `
+                    -replace '<TargetFrameworks?>[^<]*</TargetFrameworks?>', "<TargetFramework>$framework</TargetFramework>" `
+                    | Set-Content -NoNewline $csproj
+            }
 
             if ($template -ne 'mstest')
             {
