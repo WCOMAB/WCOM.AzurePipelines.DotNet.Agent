@@ -42,6 +42,7 @@ Docker image which can be used to build Azure Pipelines .NET workloads running o
 * Cake
 * dpi
 * dotnet-outdated
+* azdomerger
 * ReportGenerator (5.6.0)
 * ripgrep (`rg`)
 * patch
