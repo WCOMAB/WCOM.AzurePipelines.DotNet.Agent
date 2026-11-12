@@ -29,6 +29,7 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
         fuse-overlayfs \
         git \
         gnupg \
+        iputils-ping \
         jdupes \
         jq \
         libicu78 \
