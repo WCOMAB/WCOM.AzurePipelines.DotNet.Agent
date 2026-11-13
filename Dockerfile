@@ -96,6 +96,19 @@ RUN curl -Lo sqlcmd.tar.bz2 https://github.com/microsoft/go-sqlcmd/releases/late
     && rm sqlcmd.tar.bz2 \
     && sqlcmd --version
 
+# Install Pagefind
+ARG PAGEFIND_VERSION=1.6.0
+RUN pagefind_archive="pagefind-v${PAGEFIND_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    && pagefind_url="https://github.com/Pagefind/pagefind/releases/download/v${PAGEFIND_VERSION}" \
+    && mkdir /tmp/pagefind \
+    && curl -fsSLo "/tmp/pagefind/${pagefind_archive}" "${pagefind_url}/${pagefind_archive}" \
+    && curl -fsSLo "/tmp/pagefind/${pagefind_archive}.sha256" "${pagefind_url}/${pagefind_archive}.sha256" \
+    && echo "$(cut -d ' ' -f1 "/tmp/pagefind/${pagefind_archive}.sha256")  /tmp/pagefind/${pagefind_archive}" | sha256sum -c - \
+    && tar -xzf "/tmp/pagefind/${pagefind_archive}" -C /tmp/pagefind pagefind \
+    && install -m 755 /tmp/pagefind/pagefind /usr/local/bin/pagefind \
+    && rm -rf /tmp/pagefind \
+    && pagefind --version
+
 WORKDIR /azp/
 
 COPY ./install.sh /azp/
@@ -119,6 +132,7 @@ RUN ./recordversion.sh azd azd version \
     && ./recordversion.sh "az bicep" az bicep version \
     && ./recordversion.sh regctl regctl version \
     && ./recordversion.sh sqlcmd sqlcmd --version \
+    && ./recordversion.sh pagefind pagefind --version \
     && ./recordversion.sh rg rg --version \
     && ./recordversion.sh patch patch --version \
     && ./recordversion.sh shellcheck shellcheck --version
